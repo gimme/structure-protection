@@ -20,7 +20,7 @@ public class NeoForgeServerConfig extends ServerConfig {
                     The radius of adventure zones, measured in chunk sections (horizontally and vertically in sections of 16 blocks).
                     The center of the zone is the chunk section that the whitelisted block is found in.
                     A radius of 2 means the zone extends 2 chunks in each direction.""")
-            .defineInRange("zoneRadius", 2, 0, 10);
+            .defineInRange("zoneRadius", 2, 0, 5);
 
     private static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCK_WHITELIST = BUILDER
             .comment("The blocks to create adventure zones around")
