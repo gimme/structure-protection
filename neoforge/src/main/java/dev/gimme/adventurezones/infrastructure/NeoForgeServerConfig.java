@@ -52,8 +52,6 @@ public class NeoForgeServerConfig extends ServerConfig {
                             BuiltinStructures.END_CITY,
                             BuiltinStructures.FORTRESS,
                             BuiltinStructures.JUNGLE_TEMPLE,
-                            BuiltinStructures.NETHER_FOSSIL,
-                            BuiltinStructures.OCEAN_MONUMENT,
                             BuiltinStructures.PILLAGER_OUTPOST,
                             BuiltinStructures.TRIAL_CHAMBERS,
                             BuiltinStructures.WOODLAND_MANSION
@@ -72,6 +70,8 @@ public class NeoForgeServerConfig extends ServerConfig {
                             BuiltinStructures.IGLOO,
                             BuiltinStructures.MINESHAFT,
                             BuiltinStructures.MINESHAFT_MESA,
+                            BuiltinStructures.NETHER_FOSSIL,
+                            BuiltinStructures.OCEAN_MONUMENT,
                             BuiltinStructures.OCEAN_RUIN_COLD,
                             BuiltinStructures.OCEAN_RUIN_WARM,
                             BuiltinStructures.RUINED_PORTAL_DESERT,
