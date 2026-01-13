@@ -1,6 +1,7 @@
 package dev.gimme.adventurezones.domain;
 
 import com.mojang.logging.LogUtils;
+import dev.gimme.adventurezones.application.ChunkDataHandler;
 import dev.gimme.adventurezones.domain.config.ServerConfig;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -26,7 +27,12 @@ public class AdventureZones {
 
     private static final Logger LOG = LogUtils.getLogger();
 
+    private final ChunkDataHandler chunkDataHandler;
     private final ZoneCollection adventureZones = new ZoneCollection();
+
+    public AdventureZones(ChunkDataHandler chunkDataHandler) {
+        this.chunkDataHandler = chunkDataHandler;
+    }
 
     /**
      * Scans a chunk and creates adventure zones for any matching blocks.
@@ -34,7 +40,9 @@ public class AdventureZones {
     public void loadChunk(LevelChunk chunk) {
         chunk.findBlocks(
                 (blockState) -> true,
-                (pos, blockState) -> loadBlock(pos, blockState, chunk)
+                (pos, blockState) -> {
+                    loadBlock(pos, blockState, chunk);
+                }
         );
     }
 
@@ -60,6 +68,12 @@ public class AdventureZones {
                 exitAdventureZone(player);
             }
         }
+    }
+
+    public void onPlayerPlaceBlock(LevelChunk chunk, BlockPos pos, BlockState blockState) {
+        if (!isZoneBlock(blockState, chunk)) return;
+        chunkDataHandler.addPlayerPlacedBlock(chunk, pos);
+        LOG.debug("Player placed zone block [{}]", pos.toShortString());
     }
 
     /**
@@ -132,7 +146,12 @@ public class AdventureZones {
     private void loadBlock(BlockPos pos, BlockState blockState, LevelChunk chunk) {
         if (!isZoneBlock(blockState, chunk)) return;
 
+        if (chunkDataHandler.getPlayerPlacedBlocks(chunk).contains(pos)) {
+            LOG.debug("Ignored player-placed block [{}]", pos.toShortString());
+            return;
+        }
+
         adventureZones.add(new AdventureZone(pos));
-        LOG.debug("Found adventure zone block at [{}]", pos.toShortString());
+        LOG.debug("Loaded adventure zone block [{}]", pos.toShortString());
     }
 }

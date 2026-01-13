@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Update default config
 
+### Fixed
+
+- Ignore player-placed zone blocks (e.g., chests)
+
 ## [v1.21.1-0.1.0] - 2026-01-10
 
 ### Added
