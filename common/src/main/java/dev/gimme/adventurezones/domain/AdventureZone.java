@@ -3,47 +3,66 @@ package dev.gimme.adventurezones.domain;
 import dev.gimme.adventurezones.domain.config.ServerConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
+import net.minecraft.world.level.ChunkPos;
+import org.jetbrains.annotations.Nullable;
 
 class AdventureZone {
 
-    private final SectionPos sectionPos;
+    private final ChunkPos chunkPos;
+    private final int radius;
+    private final int minY;
+    private final int maxY;
 
-    AdventureZone(BlockPos blockPos) {
-        this.sectionPos = SectionPos.of(blockPos);
+    AdventureZone(ChunkPos chunkPos, int radius, @Nullable Integer minY, @Nullable Integer maxY) {
+        this.chunkPos = chunkPos;
+        this.radius = radius;
+        this.minY = minY != null ? minY : Integer.MIN_VALUE;
+        this.maxY = maxY != null ? maxY : Integer.MAX_VALUE;
+    }
+
+    AdventureZone(BlockPos blockPos, int radius, @Nullable Integer minY, @Nullable Integer maxY) {
+        this.chunkPos = new ChunkPos(blockPos);
+        this.radius = radius;
+
+        var sectionPos = SectionPos.of(blockPos);
+        this.minY = Math.max(minY != null ? minY : Integer.MIN_VALUE, sectionPos.minBlockY() - radius);
+        this.maxY = Math.min(maxY != null ? maxY : Integer.MAX_VALUE, sectionPos.maxBlockY() + radius);
     }
 
     /**
      * Checks if the given position is inside this zone.
      */
     boolean covers(BlockPos pos) {
-        var zoneRadius = ServerConfig.INSTANCE.getZoneRadius();
         var distance = getChessboardDistance(pos);
-        return distance <= zoneRadius;
+        return distance <= 0;
     }
 
+    /**
+     * Returns the maximum distance out of the x, y and z axis.
+     */
     private int getChessboardDistance(BlockPos pos) {
-        var blockSection = SectionPos.of(pos);
+        var dx = Math.min(pos.getX() - getMinX(), pos.getX() - getMaxX());
+        var dz = Math.min(pos.getZ() - getMinZ(), pos.getZ() - getMaxZ());
+        var dy = Math.min(pos.getY() - minY, pos.getY() - maxY);
 
-        var dx = Math.abs(this.sectionPos.getX() - blockSection.getX());
-        var dy = Math.abs(this.sectionPos.getY() - blockSection.getY());
-        var dz = Math.abs(this.sectionPos.getZ() - blockSection.getZ());
-
-        return Math.max(dx, Math.max(dy, dz));
+        return Math.max(Math.max(dx, dz), dy);
     }
 
-    public SectionPos getSectionPos() {
-        return sectionPos;
+    private int getMinX() {
+        return chunkPos.getMinBlockX() - radius;
+    }
+    private int getMaxX() {
+        return chunkPos.getMaxBlockX() + radius;
+    }
+    private int getMinZ() {
+        return chunkPos.getMinBlockZ() - radius;
+    }
+    private int getMaxZ() {
+        return chunkPos.getMaxBlockZ() + radius;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof AdventureZone zone)) return false;
-        return sectionPos.equals(zone.sectionPos);
-    }
-
-    @Override
-    public int hashCode() {
-        return sectionPos.hashCode();
+    public ChunkPos getChunkPos() {
+        return chunkPos;
     }
 
     static int getMaxPossibleChunkZoneRadius() {

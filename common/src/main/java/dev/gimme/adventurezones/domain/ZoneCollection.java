@@ -16,7 +16,7 @@ class ZoneCollection {
     private final Map<ChunkPos, Set<AdventureZone>> byChunk = new HashMap<>();
 
     void add(AdventureZone zone) {
-        byChunk.computeIfAbsent(zone.getSectionPos().chunk(), k -> new HashSet<>()).add(zone);
+        byChunk.computeIfAbsent(zone.getChunkPos(), k -> new HashSet<>()).add(zone);
     }
 
     void clear(ChunkPos chunkPos) {

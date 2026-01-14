@@ -15,9 +15,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.structure.Structure;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
 import java.util.List;
@@ -38,12 +40,58 @@ public class AdventureZones {
      * Scans a chunk and creates adventure zones for any matching blocks.
      */
     public void loadChunk(LevelChunk chunk) {
-        chunk.findBlocks(
-                (blockState) -> true,
-                (pos, blockState) -> {
-                    loadBlock(pos, blockState, chunk);
+        Set<Structure> structuresInChunk = chunk.getAllReferences().keySet();
+        if (structuresInChunk.isEmpty()) return;
+
+        var zoneConfgs = ServerConfig.INSTANCE.getZoneConfigs();
+
+        Registry<Structure> structureRegistry = chunk.getLevel().registryAccess().registryOrThrow(Registries.STRUCTURE);
+        Registry<Block> blockRegistry = chunk.getLevel().registryAccess().registryOrThrow(Registries.BLOCK);
+
+        structuresInChunk.forEach(structure -> {
+            ResourceLocation structureRL = structureRegistry.getKey(structure);
+            if (structureRL == null) return;
+
+            zoneConfgs.forEach(zoneConfig -> {
+                var isStructureWhitelisted = matchesRegex(structureRL, zoneConfig.structures());
+                if (!isStructureWhitelisted) return;
+
+                if (zoneConfig.blocks() != null) {
+                    chunk.findBlocks(
+                            (blockState) -> true,
+                            (pos, blockState) -> {
+                                ResourceLocation blockRL = blockRegistry.getKey(blockState.getBlock());
+                                if (blockRL == null) return;
+
+                                var isBlockWhitelisted = matchesRegex(blockRL, zoneConfig.blocks());
+                                if (!isBlockWhitelisted) return;
+
+                                if (chunkDataHandler.getPlayerPlacedBlocks(chunk).contains(pos)) {
+                                    LOG.debug("Ignored player-placed block [{}]", pos.toShortString());
+                                    return;
+                                }
+
+                                adventureZones.add(new AdventureZone(pos, zoneConfig.radius(), zoneConfig.minY(), zoneConfig.maxY()));
+                                LOG.debug("Loaded adventure zone for structure {} in chunk {} and block {} at [{}]", structureRL, chunk.getPos(), blockRL, pos.toShortString());
+                            }
+                    );
+                } else {
+                    adventureZones.add(new AdventureZone(chunk.getPos(), zoneConfig.radius(), zoneConfig.minY(), zoneConfig.maxY()));
+                    LOG.debug("Loaded adventure zone for structure {} in chunk {}", structureRL, chunk.getPos());
                 }
-        );
+            });
+        });
+    }
+
+    /**
+     * Checks if the given resource location matches the specified regex.
+     */
+    private static boolean matchesRegex(@NotNull ResourceLocation resourceLocation, @NotNull String regex) {
+        if (regex.contains(":")) {
+            return resourceLocation.toString().matches(regex);
+        } else {
+            return resourceLocation.getPath().matches(regex);
+        }
     }
 
     /**
@@ -138,20 +186,5 @@ public class AdventureZones {
         }
 
         return false;
-    }
-
-    /**
-     * Checks a block and creates an adventure zone if it matches the criteria.
-     */
-    private void loadBlock(BlockPos pos, BlockState blockState, LevelChunk chunk) {
-        if (!isZoneBlock(blockState, chunk)) return;
-
-        if (chunkDataHandler.getPlayerPlacedBlocks(chunk).contains(pos)) {
-            LOG.debug("Ignored player-placed block [{}]", pos.toShortString());
-            return;
-        }
-
-        adventureZones.add(new AdventureZone(pos));
-        LOG.debug("Loaded adventure zone block [{}]", pos.toShortString());
     }
 }
