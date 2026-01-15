@@ -113,9 +113,9 @@ public class NeoForgeServerConfig extends ServerConfig {
                 .map(cfg -> new ZoneConfig(
                         cfg.get("structures"),
                         cfg.getInt("radius"),
-                        cfg.getOrElse("blocks", null),
-                        cfg.getIntOrElse("aboveY", null),
-                        cfg.getIntOrElse("belowY", null)
+                        cfg.contains("blocks") ? cfg.get("blocks") : null,
+                        cfg.contains("aboveY") ? cfg.getInt("aboveY") : null,
+                        cfg.contains("belowY") ? cfg.getInt("belowY") : null
                 ))
                 .toList();
     }
