@@ -14,9 +14,13 @@ public class NeoForgeServerConfig extends ServerConfig {
 
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
-    private static final ModConfigSpec.BooleanValue DISPLAY_ZONE_TEXT = BUILDER
-            .comment("If a text should be displayed on screen when entering/leaving an adventure zone")
-            .define("displayTitleOnZoneEntry", true);
+    private static final ModConfigSpec.BooleanValue DISPLAY_MODE_TEXT = BUILDER
+            .comment("If a text should be displayed on screen when entering/leaving adventure mode")
+            .define("displayTextOnModeSwitch", true);
+
+    private static final ModConfigSpec.IntValue COMBAT_MODE_SECONDS = BUILDER
+            .comment("How long (in seconds) combat mode should last after a player attacks or is attacked. 0 to disable.")
+            .defineInRange("combatModeSeconds", 10, 0, 300);
 
     private static final ModConfigSpec.ConfigValue<List<? extends Config>> ZONE_SPECS = BUILDER
             .comment("""
@@ -103,8 +107,13 @@ public class NeoForgeServerConfig extends ServerConfig {
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     @Override
-    public boolean displayZoneText() {
-        return DISPLAY_ZONE_TEXT.get();
+    public boolean displayModeText() {
+        return DISPLAY_MODE_TEXT.get();
+    }
+
+    @Override
+    public int getCombatModeSeconds() {
+        return COMBAT_MODE_SECONDS.get();
     }
 
     @Override

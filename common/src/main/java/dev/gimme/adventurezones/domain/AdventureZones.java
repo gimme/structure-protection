@@ -89,58 +89,9 @@ public class AdventureZones {
     }
 
     /**
-     * Updates the player's game mode based on if they are in an adventure zone.
-     */
-    public void updatePlayer(ServerPlayer player) {
-        var pos = player.blockPosition();
-
-        if (isInAdventureZone(pos)) {
-            if (player.gameMode.getGameModeForPlayer() == GameType.SURVIVAL) {
-                enterAdventureZone(player);
-            }
-        } else {
-            if (player.gameMode.getGameModeForPlayer() == GameType.ADVENTURE) {
-                exitAdventureZone(player);
-            }
-        }
-    }
-
-    /**
      * Checks if the given position is inside an adventure zone.
      */
-    private boolean isInAdventureZone(BlockPos pos) {
+    public boolean isInAdventureZone(BlockPos pos) {
         return adventureZones.hasAnyZoneInRange(pos);
-    }
-
-    /**
-     * Forces the player into Adventure mode.
-     */
-    private void enterAdventureZone(ServerPlayer player) {
-        player.setGameMode(GameType.ADVENTURE);
-
-        if (ServerConfig.INSTANCE.displayZoneText()) {
-            Component title = Component.translatableWithFallback("message.adventurezones.enter_zone_title", "Adventure Mode")
-                    .withStyle(Style.EMPTY.withColor(ChatFormatting.AQUA));
-            ClientboundSetTitleTextPacket titlePacket = new ClientboundSetTitleTextPacket(Component.literal(""));
-            ClientboundSetSubtitleTextPacket subtitlePacket = new ClientboundSetSubtitleTextPacket(title);
-            player.connection.send(titlePacket);
-            player.connection.send(subtitlePacket);
-        }
-    }
-
-    /**
-     * Returns the player to survival mode.
-     */
-    private void exitAdventureZone(ServerPlayer player) {
-        player.setGameMode(GameType.SURVIVAL);
-
-        if (ServerConfig.INSTANCE.displayZoneText()) {
-            Component title = Component.translatableWithFallback("message.adventurezones.leave_zone_title", "Survival Mode")
-                    .withStyle(Style.EMPTY.withColor(ChatFormatting.GREEN));
-            ClientboundSetTitleTextPacket titlePacket = new ClientboundSetTitleTextPacket(Component.literal(""));
-            ClientboundSetSubtitleTextPacket subtitlePacket = new ClientboundSetSubtitleTextPacket(title);
-            player.connection.send(titlePacket);
-            player.connection.send(subtitlePacket);
-        }
     }
 }

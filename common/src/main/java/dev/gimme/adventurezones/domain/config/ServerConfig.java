@@ -8,7 +8,9 @@ public abstract class ServerConfig {
 
     public static ServerConfig INSTANCE;
 
-    public abstract boolean displayZoneText();
+    public abstract boolean displayModeText();
+
+    public abstract int getCombatModeSeconds();
 
     public abstract List<ZoneConfig> getZoneConfigs();
 

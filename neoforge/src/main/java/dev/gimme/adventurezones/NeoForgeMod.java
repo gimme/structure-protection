@@ -3,6 +3,7 @@ package dev.gimme.adventurezones;
 import dev.gimme.adventurezones.domain.AdventureZones;
 import dev.gimme.adventurezones.application.ChunkHandler;
 import dev.gimme.adventurezones.application.PlayerHandler;
+import dev.gimme.adventurezones.domain.PlayerManager;
 import dev.gimme.adventurezones.domain.config.ServerConfig;
 import dev.gimme.adventurezones.domain.util.Constants;
 import dev.gimme.adventurezones.infrastructure.ChunkListener;
@@ -32,8 +33,9 @@ public class NeoForgeMod {
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
         var adventureZones = new AdventureZones();
+        var playerManager = new PlayerManager(adventureZones);
 
         NeoForge.EVENT_BUS.register(new ChunkListener(new ChunkHandler(adventureZones)));
-        NeoForge.EVENT_BUS.register(new PlayerListener(new PlayerHandler(adventureZones)));
+        NeoForge.EVENT_BUS.register(new PlayerListener(new PlayerHandler(playerManager)));
     }
 }
