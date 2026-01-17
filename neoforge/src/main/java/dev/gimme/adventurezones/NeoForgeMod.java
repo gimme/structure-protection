@@ -7,7 +7,6 @@ import dev.gimme.adventurezones.domain.PlayerManager;
 import dev.gimme.adventurezones.domain.config.ServerConfig;
 import dev.gimme.adventurezones.domain.util.Constants;
 import dev.gimme.adventurezones.infrastructure.ChunkListener;
-import dev.gimme.adventurezones.infrastructure.ModAttachmentTypes;
 import dev.gimme.adventurezones.infrastructure.NeoForgeServerConfig;
 import dev.gimme.adventurezones.infrastructure.PlayerListener;
 import net.neoforged.bus.api.IEventBus;
@@ -26,8 +25,6 @@ public class NeoForgeMod {
 
         modContainer.registerConfig(ModConfig.Type.COMMON, NeoForgeServerConfig.SPEC, Constants.MOD_ID + "-server.toml");
         ServerConfig.INSTANCE = new NeoForgeServerConfig();
-
-        ModAttachmentTypes.ATTACHMENT_TYPES.register(eventBus);
     }
 
     @SubscribeEvent

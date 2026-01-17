@@ -2,18 +2,11 @@ package dev.gimme.adventurezones.domain;
 
 import com.mojang.logging.LogUtils;
 import dev.gimme.adventurezones.domain.config.ServerConfig;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.Style;
-import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
-import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.structure.Structure;
@@ -37,11 +30,11 @@ public class AdventureZones {
 
         var zoneConfgs = ServerConfig.INSTANCE.getZoneConfigs();
 
-        Registry<Structure> structureRegistry = chunk.getLevel().registryAccess().registryOrThrow(Registries.STRUCTURE);
-        Registry<Block> blockRegistry = chunk.getLevel().registryAccess().registryOrThrow(Registries.BLOCK);
+        Registry<Structure> structureRegistry = chunk.getLevel().registryAccess().lookupOrThrow(Registries.STRUCTURE);
+        Registry<Block> blockRegistry = chunk.getLevel().registryAccess().lookupOrThrow(Registries.BLOCK);
 
         structuresInChunk.forEach(structure -> {
-            ResourceLocation structureRL = structureRegistry.getKey(structure);
+            Identifier structureRL = structureRegistry.getKey(structure);
             if (structureRL == null) return;
 
             zoneConfgs.forEach(zoneConfig -> {
@@ -52,7 +45,7 @@ public class AdventureZones {
                     chunk.findBlocks(
                             (blockState) -> true,
                             (pos, blockState) -> {
-                                ResourceLocation blockRL = blockRegistry.getKey(blockState.getBlock());
+                                Identifier blockRL = blockRegistry.getKey(blockState.getBlock());
                                 if (blockRL == null) return;
 
                                 var isBlockWhitelisted = matchesRegex(blockRL, zoneConfig.blocks());
@@ -73,7 +66,7 @@ public class AdventureZones {
     /**
      * Checks if the given resource location matches the specified regex.
      */
-    private static boolean matchesRegex(@NotNull ResourceLocation resourceLocation, @NotNull String regex) {
+    private static boolean matchesRegex(@NotNull Identifier resourceLocation, @NotNull String regex) {
         if (regex.contains(":")) {
             return resourceLocation.toString().matches(regex);
         } else {
