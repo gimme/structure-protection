@@ -1,6 +1,9 @@
 package dev.gimme.adventurezones.infrastructure;
 
+import com.electronwill.nightconfig.core.Config;
 import net.neoforged.neoforge.common.ModConfigSpec;
+
+import java.util.List;
 
 /**
  * Test-only handles to package-private {@link FcapServerConfig} values, exposed so game tests can
@@ -8,8 +11,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
  */
 public final class ConfigTestSupport {
 
-    public static final ModConfigSpec.IntValue COMBAT_MODE_SECONDS = FcapServerConfig.COMBAT_MODE_SECONDS;
-    public static final ModConfigSpec.BooleanValue DISPLAY_MODE_TEXT = FcapServerConfig.DISPLAY_MODE_TEXT;
+    public static final ModConfigSpec.ConfigValue<List<? extends Config>> PROTECTED_STRUCTURE = FcapServerConfig.PROTECTED_STRUCTURE;
 
     private ConfigTestSupport() {
     }

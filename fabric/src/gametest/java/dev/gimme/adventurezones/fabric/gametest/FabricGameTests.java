@@ -16,7 +16,7 @@ public final class FabricGameTests {
     }
 
     @GameTest
-    public void combatSecondsConfigurable(GameTestHelper helper) {
-        AdventureZonesGameTests.combatSecondsConfigurable(helper);
+    public void protectedStructuresConfigurable(GameTestHelper helper) {
+        AdventureZonesGameTests.protectedStructuresConfigurable(helper);
     }
 }

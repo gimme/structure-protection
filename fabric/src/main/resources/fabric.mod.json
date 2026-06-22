@@ -19,6 +19,9 @@
             "dev.gimme.adventurezones.fabric.FabricMod"
         ]
     },
+    "mixins": [
+        "${mod_id}.mixins.json"
+    ],
     "depends": {
         "fabricloader": ">=${fabric_loader_version}",
         "fabric-api": "*",

@@ -1,10 +1,11 @@
 package dev.gimme.adventurezones;
 
-import dev.gimme.adventurezones.application.ChunkHandler;
-import dev.gimme.adventurezones.application.PlayerHandler;
-import dev.gimme.adventurezones.domain.AdventureZones;
-import dev.gimme.adventurezones.domain.PlayerManager;
+import dev.gimme.adventurezones.application.BlockProtection;
 
+/**
+ * Composition root. Wires the stateless services and exposes them through {@link #INSTANCE}, which the loader-agnostic
+ * mixins read. {@link #init()} runs once at mod load — there is no per-server state to rebuild.
+ */
 public class Main {
 
     public static Main INSTANCE;
@@ -14,22 +15,13 @@ public class Main {
         return INSTANCE;
     }
 
-    private final ChunkHandler chunkHandler;
-    private final PlayerHandler playerHandler;
+    private final BlockProtection blockProtection;
 
     private Main() {
-        AdventureZones adventureZones = new AdventureZones();
-        PlayerManager playerManager = new PlayerManager(adventureZones);
-
-        this.chunkHandler = new ChunkHandler(adventureZones);
-        this.playerHandler = new PlayerHandler(playerManager);
+        this.blockProtection = new BlockProtection();
     }
 
-    public ChunkHandler getChunkHandler() {
-        return chunkHandler;
-    }
-
-    public PlayerHandler getPlayerHandler() {
-        return playerHandler;
+    public BlockProtection getBlockProtection() {
+        return blockProtection;
     }
 }
