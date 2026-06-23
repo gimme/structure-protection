@@ -7,9 +7,7 @@ import dev.gimme.adventurezones.domain.util.Constants;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -21,89 +19,67 @@ public class FcapServerConfig extends ServerConfig {
 
     public static final String FILE_NAME = Constants.MOD_ID + "-server.toml";
 
-    /**
-     * Separates the item regex from the block regex in a single allow-list entry, e.g. {@code "ladder|torch=.*"}.
-     */
-    private static final String ALLOW_LIST_SEPARATOR = "=";
-
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
     static final ModConfigSpec.ConfigValue<List<? extends Config>> STRUCTURE_PROTECTION = BUILDER
             .comment("""
                     Rules controlling which structures' generated pieces are protected from block placing/breaking and
-                    what is still allowed inside them. A structure's allowed edits are the union of every rule that
-                    matches it, so common exceptions can live in one shared rule instead of being repeated. Properties:
+                    what is still allowed inside them. A structure's policy is the union of every rule that matches it,
+                    so common exceptions can live in one shared rule instead of being repeated. Properties:
                       "structures": A regex matching the structures this rule applies to.
-                      "protected": If true (default), a matching structure is in scope and its blocks are protected. If
-                        false, the rule never protects anything on its own; it only contributes its allow-lists to
-                        structures that some other rule protects. Use a non-protecting ".*" rule as a shared base so you
-                        do not have to repeat common exceptions in every structure. A ".*" rule must be non-protecting,
-                        since most structures should not be touched at all.
-                      "breachable": If false (default), the structure's blocks can never be placed/broken by
-                        non-creative players. If true, they can be edited only while the player stands outside this
-                        structure's own pieces (you can breach a wall from outside, but cannot dig once inside; standing
-                        in an unrelated protected structure does not block it). Use this for sealed structures with no
-                        natural entrance, e.g. strongholds. Only meaningful on a protecting rule.
-                      "protectsOnlyPhysical": If false (default), every block in scope is protected. If true, this rule
-                        guards only blocks that block motion (walls, floors, stairs, fences, doors…) and leaves
-                        non-physical blocks such as torches, carpets, and flowers freely editable — useful when the
-                        point is to preserve the structure's shape rather than every decoration. Only meaningful on a
-                        protecting rule.
-                      "canPlaceOn" (optional): Exceptions for this rule. A list of "<itemRegex>=<blockRegex>" entries;
-                        each lets the matched item still be placed on the matched block inside the structure.
-                        E.g. ["ladder|torch=.*"].
-                      "canBreak" (optional): Exceptions for this rule. A list of "<itemRegex>=<blockRegex>" entries;
-                        each lets the matched item still break the matched block inside the structure. Empty by default,
-                        since breaking is the main way to escape a protected structure.
-                    If a regex contains a colon (":") it is matched against the full namespaced id
-                    (e.g. minecraft:fortress); otherwise only against the path.
+                      "protect" (optional): A regex matching block names this rule protects from placing/breaking. ".*"
+                        protects everything; the default (empty) protects nothing by itself. Combines additively with
+                        "protectStructural".
+                      "protectStructural" (optional, default false): If true, additionally protect every block that
+                        blocks motion (walls, floors, stairs, fences, doors…) — the structure's shape — while leaving
+                        non-physical blocks such as torches, carpets, and flowers editable. For placement it is judged by
+                        the block being placed, not the block it rests on.
+                      "breachable" (optional, default false): If true, a block this rule protects may still be edited
+                        while the player stands outside this structure's own pieces (breach a wall from outside, but you
+                        cannot dig once inside; standing in an unrelated protected structure does not grant it). Use this
+                        for sealed structures with no natural entrance, e.g. strongholds.
+                      "canPlace" (optional): A regex matching block names that may still be placed inside the structure,
+                        overriding protection. E.g. "ladder" so players can climb/escape.
+                      "canBreak" (optional): A regex matching block names that may still be broken inside the structure,
+                        overriding protection. Empty by default, since breaking is the main way to escape a protected
+                        structure. E.g. "decorated_pot" to let players loot pots without otherwise touching the shape.
+                    A rule that protects nothing (no "protect"/"protectStructural") only contributes its allow-lists, so a
+                    shared ".*" rule can grant common exceptions without protecting every structure. If a regex contains
+                    a colon (":") it is matched against the full namespaced id (e.g. minecraft:fortress); otherwise only
+                    against the path.
                     """)
             .defineList(
                     "structureProtection",
                     () -> {
-                        // Shared base: light/navigation sources may be placed in any protected structure, so the
-                        // protecting rules below need not repeat it. Non-protecting, so it never pulls a structure
-                        // into scope on its own.
+                        // Shared base: a few navigation/loot exceptions granted in every matched structure, so the
+                        // protecting rules below need not repeat them. It protects nothing on its own.
                         Config base = TomlFormat.newConfig();
                         base.set("structures", ".*");
-                        base.set("protected", false);
-                        base.set("canPlaceOn", lightSources());
+                        base.set("canPlace", "ladder");
+                        base.set("canBreak", "decorated_pot|ladder|gilded_blackstone|gold_block|.*_ore");
 
-                        Config alwaysProtected = TomlFormat.newConfig();
-                        alwaysProtected.set("structures", "fortress|bastion_remnant|end_city|mansion|.*_pyramid|ancient_city|trial_chambers|pillager_outpost");
-                        alwaysProtected.set("protected", true);
-                        alwaysProtected.set("breachable", false);
-                        // Guard the structure's shape, not its decoration: torches, carpets, flowers, etc. stay editable.
-                        alwaysProtected.set("protectsOnlyPhysical", true);
-                        alwaysProtected.set("canBreak", List.of());
+                        // Guard the structure's shape, not its decoration: torches, carpets, flowers, etc. stay
+                        // editable because they do not block motion.
+                        Config structural = TomlFormat.newConfig();
+                        structural.set("structures", "bastion_remnant|end_city|fortress|jungle_pyramid|mansion|pillager_outpost");
+                        structural.set("protectStructural", true);
 
-                        Config stronghold = TomlFormat.newConfig();
-                        stronghold.set("structures", "stronghold");
-                        stronghold.set("protected", true);
-                        stronghold.set("breachable", true);
-                        stronghold.set("protectsOnlyPhysical", true);
-                        stronghold.set("canBreak", List.of());
+                        // Sealed structures with no natural entrance: breach a wall from outside, locked once inside.
+                        Config sealed = TomlFormat.newConfig();
+                        sealed.set("structures", "ancient_city|stronghold|trial_chambers");
+                        sealed.set("protectStructural", true);
+                        sealed.set("breachable", true);
 
-                        return List.of(base, alwaysProtected, stronghold);
+                        return List.of(base, structural, sealed);
                     },
                     () -> {
                         Config cfg = TomlFormat.newConfig();
                         cfg.set("structures", "minecraft:fortress");
-                        cfg.set("protected", true);
-                        cfg.set("breachable", false);
-                        cfg.set("canPlaceOn", lightSources());
-                        cfg.set("canBreak", List.of());
+                        cfg.set("protectStructural", true);
                         return cfg;
                     },
                     FcapServerConfig::validateStructureProtection
             );
-
-    /**
-     * The default {@code canPlaceOn} allow-list: light/navigation sources may be placed on anything.
-     */
-    private static List<String> lightSources() {
-        return List.of(".*torch|.*lantern" + ALLOW_LIST_SEPARATOR + ".*");
-    }
 
     /**
      * Validates that the given object is a valid structure rule.
@@ -111,31 +87,22 @@ public class FcapServerConfig extends ServerConfig {
     private static boolean validateStructureProtection(Object o) {
         if (!(o instanceof Config cfg)) return false;
 
-        Object structures = cfg.get("structures");
-        if (!(structures instanceof String s) || !isValidRegex(s)) return false;
+        if (!(cfg.get("structures") instanceof String s) || !isValidRegex(s)) return false;
 
-        if (cfg.contains("protected") && !(cfg.get("protected") instanceof Boolean)) return false;
-        if (cfg.contains("breachable") && !(cfg.get("breachable") instanceof Boolean)) return false;
-        if (cfg.contains("protectsOnlyPhysical") && !(cfg.get("protectsOnlyPhysical") instanceof Boolean)) return false;
+        if (!isOptionalRegex(cfg, "protect")) return false;
+        if (!isOptionalRegex(cfg, "canPlace")) return false;
+        if (!isOptionalRegex(cfg, "canBreak")) return false;
 
-        if (cfg.contains("canPlaceOn") && !validateAllowList(cfg.get("canPlaceOn"))) return false;
-        return !cfg.contains("canBreak") || validateAllowList(cfg.get("canBreak"));
+        if (cfg.contains("protectStructural") && !(cfg.get("protectStructural") instanceof Boolean)) return false;
+        return !cfg.contains("breachable") || cfg.get("breachable") instanceof Boolean;
     }
 
     /**
-     * Validates that the given object is a list of "&lt;itemRegex&gt;=&lt;blockRegex&gt;" entries.
+     * Validates that an optional key is either absent or a valid-regex string.
      */
-    private static boolean validateAllowList(Object o) {
-        if (!(o instanceof List<?> list)) return false;
-
-        for (Object element : list) {
-            if (!(element instanceof String entry)) return false;
-            int sep = entry.indexOf(ALLOW_LIST_SEPARATOR);
-            if (sep < 0) return false;
-            if (!isValidRegex(entry.substring(0, sep))) return false;
-            if (!isValidRegex(entry.substring(sep + ALLOW_LIST_SEPARATOR.length()))) return false;
-        }
-        return true;
+    private static boolean isOptionalRegex(Config cfg, String key) {
+        if (!cfg.contains(key)) return true;
+        return cfg.get(key) instanceof String s && isValidRegex(s);
     }
 
     /**
@@ -155,39 +122,27 @@ public class FcapServerConfig extends ServerConfig {
     @Override
     public List<StructureRule> getStructureRules() {
         return STRUCTURE_PROTECTION.get().stream()
-                .map(cfg -> {
-                    Object protectedVal = cfg.get("protected");
-                    boolean isProtected = !(protectedVal instanceof Boolean pb) || pb; // absent defaults to protected
-                    boolean breachable = cfg.get("breachable") instanceof Boolean bb && bb;
-                    boolean protectsOnlyPhysical = cfg.get("protectsOnlyPhysical") instanceof Boolean pp && pp;
-                    return new StructureRule(
-                            cfg.get("structures"),
-                            isProtected,
-                            breachable,
-                            protectsOnlyPhysical,
-                            parseAllowList(cfg, "canPlaceOn"),
-                            parseAllowList(cfg, "canBreak"));
-                })
+                .map(cfg -> new StructureRule(
+                        cfg.get("structures"),
+                        str(cfg, "protect"),
+                        bool(cfg, "protectStructural"),
+                        bool(cfg, "breachable"),
+                        str(cfg, "canPlace"),
+                        str(cfg, "canBreak")))
                 .toList();
     }
 
     /**
-     * Reads a list of "&lt;itemRegex&gt;=&lt;blockRegex&gt;" entries into an item-regex to block-regex map. Entries
-     * sharing an item regex are unioned. Returns an empty map if the key is absent.
+     * Reads a string config value, defaulting to empty when absent.
      */
-    private static Map<String, String> parseAllowList(Config cfg, String key) {
-        Object value = cfg.get(key);
-        if (!(value instanceof List<?> list)) return Map.of();
+    private static String str(Config cfg, String key) {
+        return cfg.get(key) instanceof String s ? s : "";
+    }
 
-        Map<String, String> map = new LinkedHashMap<>();
-        for (Object element : list) {
-            if (!(element instanceof String entry)) continue;
-            int sep = entry.indexOf(ALLOW_LIST_SEPARATOR);
-            if (sep < 0) continue;
-            String item = entry.substring(0, sep);
-            String block = entry.substring(sep + ALLOW_LIST_SEPARATOR.length());
-            map.merge(item, block, (a, b) -> a + "|" + b);
-        }
-        return map;
+    /**
+     * Reads a boolean config value, defaulting to false when absent.
+     */
+    private static boolean bool(Config cfg, String key) {
+        return cfg.get(key) instanceof Boolean b && b;
     }
 }

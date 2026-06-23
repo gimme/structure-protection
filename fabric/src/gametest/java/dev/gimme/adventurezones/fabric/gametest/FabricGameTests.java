@@ -21,7 +21,7 @@ public final class FabricGameTests {
     }
 
     @GameTest
-    public void protectsOnlyPhysicalConfigurable(GameTestHelper helper) {
-        AdventureZonesGameTests.protectsOnlyPhysicalConfigurable(helper);
+    public void protectStructuralConfigurable(GameTestHelper helper) {
+        AdventureZonesGameTests.protectStructuralConfigurable(helper);
     }
 }

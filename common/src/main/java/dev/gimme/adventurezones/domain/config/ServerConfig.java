@@ -1,49 +1,49 @@
 package dev.gimme.adventurezones.domain.config;
 
 import java.util.List;
-import java.util.Map;
 
 public abstract class ServerConfig {
 
     public static ServerConfig INSTANCE;
 
     /**
-     * The structure rules: each applies to a set of structures and carries whether it protects, its breach mode, and
-     * its place/break allow-lists. Includes non-protecting "library" rules, which only contribute allow-lists.
+     * The structure rules: each applies to a set of structures and carries what it protects and what it still allows.
+     * A rule that protects nothing acts as a "library" rule, contributing only its allow-lists to structures that
+     * other rules protect.
      */
     public abstract List<StructureRule> getStructureRules();
 
     /**
-     * A rule for a set of structures.
+     * A rule for a set of structures. A block at a matched position is <em>protected</em> for an edit if {@code protect}
+     * matches its name <em>or</em> {@code protectStructural} is set and the block blocks motion; a protected block is
+     * blocked unless the relevant allow-list ({@code canPlace}/{@code canBreak}) matches it, or a breachable rule lets
+     * the player edit from outside. A structure's effective policy is the union of every rule that matches it.
      *
-     * @param structures  a regex matching the structures this rule applies to
-     * @param isProtected if {@code true} (the default), a matching structure is in scope and its blocks are protected.
-     *                    If {@code false}, the rule never puts a structure into scope on its own; it only contributes
-     *                    its allow-lists to structures that some other rule protects. Use {@code false} for a shared
-     *                    "library" rule, e.g. a {@code ".*"} base granting common exceptions to every protected
-     *                    structure without having to repeat them per structure.
-     * @param breachable  if {@code false}, the structure's blocks can never be edited; if {@code true}, they can be
-     *                    edited only while the player stands outside this structure's own pieces (breach from outside,
-     *                    locked inside) — standing inside an unrelated protected structure does not block it. Only
-     *                    meaningful on a protecting rule.
-     * @param protectsOnlyPhysical if {@code false} (the default), every block in scope is protected; if {@code true},
-     *                    this rule guards only blocks that block motion (walls, floors, stairs, fences, doors…) and
-     *                    permits edits to non-physical blocks such as torches, carpets, and flowers. "Physical" means
-     *                    {@code BlockState#blocksMotion()}: a non-empty, motion-blocking collision box. Like the other
-     *                    permissions it composes by union — a rule permitting a non-physical edit allows it regardless
-     *                    of what other matching rules say. Only meaningful on a protecting rule.
-     * @param canPlaceOn  exceptions for this rule: maps an item-name regex to a block-name regex of blocks the item may
-     *                    still be placed on
-     * @param canBreak    exceptions for this rule: maps an item-name regex to a block-name regex of blocks the item may
-     *                    still break
+     * @param structures        a regex matching the structures this rule applies to
+     * @param protect           a regex matching block names this rule protects; {@code ".*"} protects everything, an
+     *                          empty string protects nothing. Composes additively with {@code protectStructural}.
+     * @param protectStructural if {@code true}, additionally protect every block that blocks motion (walls, floors,
+     *                          stairs, fences, doors…) — the structure's shape — while leaving non-physical blocks such
+     *                          as torches, carpets, and flowers editable. "Blocks motion" means
+     *                          {@code BlockState#blocksMotion()}: a non-empty, motion-blocking collision box. For
+     *                          placement it is judged by the block being placed, not the block it rests on.
+     * @param breachable        if {@code true}, a block this rule protects may still be edited while the player stands
+     *                          outside this structure's own pieces (breach from outside, locked inside) — standing
+     *                          inside an unrelated protected structure does not grant it. Only meaningful where the rule
+     *                          protects something.
+     * @param canPlace          a regex matching block names that may still be placed inside the structure, overriding
+     *                          protection. Empty allows nothing.
+     * @param canBreak          a regex matching block names that may still be broken inside the structure, overriding
+     *                          protection. Empty allows nothing (breaking is the main way to escape a protected
+     *                          structure).
      */
     public record StructureRule(
             String structures,
-            boolean isProtected,
+            String protect,
+            boolean protectStructural,
             boolean breachable,
-            boolean protectsOnlyPhysical,
-            Map<String, String> canPlaceOn,
-            Map<String, String> canBreak
+            String canPlace,
+            String canBreak
     ) {
     }
 }

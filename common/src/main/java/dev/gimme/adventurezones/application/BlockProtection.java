@@ -1,26 +1,26 @@
 package dev.gimme.adventurezones.application;
 
-import dev.gimme.adventurezones.domain.BlockInteractionRules;
 import dev.gimme.adventurezones.domain.ProtectedStructures;
 import dev.gimme.adventurezones.domain.ProtectedStructures.Match;
 import dev.gimme.adventurezones.domain.config.ServerConfig.StructureRule;
+import dev.gimme.adventurezones.domain.util.Identifiers;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.pattern.BlockInWorld;
-import org.jetbrains.annotations.Nullable;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * Decides, statelessly, whether a block place/break should be prevented because it targets a protected structure piece.
- * Queries the live {@link ProtectedStructures} and each matching rule's own allow-list ({@link BlockInteractionRules})
- * at the moment of the interaction — there is no per-server or per-player state.
+ * Queries the live {@link ProtectedStructures} and each matching {@link StructureRule} at the moment of the interaction
+ * — there is no per-server or per-player state.
  */
 public final class BlockProtection {
 
@@ -28,11 +28,9 @@ public final class BlockProtection {
      * Whether breaking the block at {@code targetPos} should be prevented for the given player.
      */
     public boolean preventsBreak(ServerLevel level, BlockPos targetPos, ServerPlayer player) {
-        ItemStack item = player.getMainHandItem();
-        BlockInWorld ruleBlock = new BlockInWorld(level, targetPos, false);
-        // When breaking, the edited block is the target itself, so its real in-world state answers "is this physical?".
-        boolean editedBlocksMotion = ruleBlock.getState().blocksMotion();
-        return prevented(level, targetPos, player, item, ruleBlock, false, editedBlocksMotion);
+        // When breaking, the edited block is the target itself, so its real in-world state answers everything.
+        BlockState state = level.getBlockState(targetPos);
+        return prevented(level, targetPos, player, state.getBlock(), state.blocksMotion(), false);
     }
 
     /**
@@ -41,51 +39,52 @@ public final class BlockProtection {
     public boolean preventsPlace(Level level, BlockPlaceContext ctx) {
         if (!(level instanceof ServerLevel serverLevel)) return false;
         if (!(ctx.getPlayer() instanceof ServerPlayer player)) return false;
+        // Only block items place a block; the rules match against the block being placed, not the block it rests on.
+        if (!(ctx.getItemInHand().getItem() instanceof BlockItem blockItem)) return false;
 
-        BlockPos targetPos = ctx.getClickedPos();
-        ItemStack item = ctx.getItemInHand();
-        // The block the item is being placed on (its support), opposite the clicked face from the new block position.
-        // This drives canPlaceOn (the right-hand side of "<item>=<block>" matches the support).
-        BlockPos supportPos = targetPos.relative(ctx.getClickedFace().getOpposite());
-        BlockInWorld ruleBlock = new BlockInWorld(serverLevel, supportPos, false);
-        // The "physical?" question is about the block being *placed* (the item's block), not the support it rests on.
+        Block placed = blockItem.getBlock();
         // The default state is a sound approximation: every motion-blocking block blocks motion in its default state.
-        boolean editedBlocksMotion = item.getItem() instanceof BlockItem blockItem
-                && blockItem.getBlock().defaultBlockState().blocksMotion();
-        return prevented(serverLevel, targetPos, player, item, ruleBlock, true, editedBlocksMotion);
+        return prevented(serverLevel, ctx.getClickedPos(), player, placed, placed.defaultBlockState().blocksMotion(),
+                true);
     }
 
-    private boolean prevented(ServerLevel level, BlockPos targetPos, @Nullable ServerPlayer player, ItemStack item,
-                              BlockInWorld ruleBlock, boolean placing, boolean editedBlocksMotion) {
-        if (player == null || player.isCreative()) return false; // Creative bypass
+    private boolean prevented(ServerLevel level, BlockPos targetPos, ServerPlayer player, Block editedBlock,
+                              boolean editedBlocksMotion, boolean placing) {
+        if (player.isCreative()) return false; // Creative bypass
 
         List<Match> matches = ProtectedStructures.matchesAt(level, targetPos);
+        if (matches.isEmpty()) return false;
 
-        // Membership: the position is in scope only if a protecting rule matches it. Non-protecting "library" rules
-        // (e.g. a ".*" base) contribute allow-lists but never put a structure into scope on their own.
-        if (matches.stream().flatMap(m -> m.rules().stream()).noneMatch(StructureRule::isProtected)) return false;
+        Identifier blockId = level.registryAccess().lookupOrThrow(Registries.BLOCK).getKey(editedBlock);
+        if (blockId == null) return false;
 
-        // Every matching rule is a whitelist: the edit is allowed the moment any rule permits it, no matter what other
-        // rules say. A rule permits it through its allow-list, or — on a protecting rule — by guarding only physical
-        // blocks while this edit is non-physical, or — for a breachable rule — by the player standing outside that
-        // rule's own structure (breach from outside, locked inside).
+        // Walk every matching rule. The edit is blocked only if some rule protects this block and no rule grants an
+        // exception: an allow-list match (subtractive), or — for a breachable protecting rule — the player standing
+        // outside that rule's own structure (breach from outside, locked inside). Exceptions compose by union.
+        boolean protectedHere = false;
         for (Match match : matches) {
             for (StructureRule rule : match.rules()) {
-                Map<String, String> allowList = placing ? rule.canPlaceOn() : rule.canBreak();
-                if (BlockInteractionRules.isAllowed(item, ruleBlock, allowList)) return false;
-
-                if (rule.isProtected()) {
-                    // A "physical only" rule guards walls/floors/stairs/etc. but leaves non-physical blocks editable.
-                    if (rule.protectsOnlyPhysical() && !editedBlocksMotion) return false;
-
+                if (protects(rule, blockId, editedBlocksMotion)) {
+                    protectedHere = true;
                     if (rule.breachable()
                             && !ProtectedStructures.isInsidePiece(level, player.blockPosition(), match.structure())) {
                         return false; // breachable rule and the player is outside its structure: breach permitted
                     }
                 }
+
+                String allowList = placing ? rule.canPlace() : rule.canBreak();
+                if (Identifiers.matches(blockId, allowList)) return false;
             }
         }
 
-        return true; // protected, and no matching rule permits the edit
+        return protectedHere; // protected, and no matching rule permits the edit
+    }
+
+    /**
+     * Whether the given rule protects the block: its {@code protect} regex matches the block, or it protects the
+     * structure's shape ({@code protectStructural}) and the block blocks motion.
+     */
+    private static boolean protects(StructureRule rule, Identifier blockId, boolean blocksMotion) {
+        return Identifiers.matches(blockId, rule.protect()) || (rule.protectStructural() && blocksMotion);
     }
 }

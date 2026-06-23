@@ -31,20 +31,19 @@ public final class AdventureZonesGameTests {
 
         List<StructureRule> rules = config.getStructureRules();
         helper.assertFalse(rules.isEmpty(), "the default config should define at least one structure rule");
-        helper.assertTrue(rules.stream().anyMatch(StructureRule::isProtected),
-                "the defaults should include at least one protecting rule");
-        helper.assertTrue(rules.stream().anyMatch(rule -> !rule.isProtected()),
-                "the defaults should include a non-protecting \".*\" base rule that only contributes allow-lists");
-        helper.assertTrue(rules.stream().anyMatch(rule -> !rule.breachable()),
-                "the defaults should include an always-protected (breachable=false) structure");
+        helper.assertTrue(rules.stream().anyMatch(StructureRule::protectStructural),
+                "the defaults should protect at least one structure's shape (protectStructural)");
+        helper.assertTrue(rules.stream().anyMatch(rule -> rule.protectStructural() && !rule.breachable()),
+                "the defaults should include an always-protected (non-breachable) structure");
         helper.assertTrue(rules.stream().anyMatch(StructureRule::breachable),
                 "the defaults should include a breachable structure (e.g. stronghold)");
-        helper.assertTrue(rules.stream().filter(StructureRule::isProtected).allMatch(StructureRule::protectsOnlyPhysical),
-                "the default protecting rules should guard only physical blocks (protectsOnlyPhysical=true)");
-        helper.assertTrue(rules.stream().anyMatch(rule -> !rule.canPlaceOn().isEmpty()),
-                "the defaults should grant at least one canPlaceOn exception");
-        helper.assertTrue(rules.stream().allMatch(rule -> rule.canBreak().isEmpty()),
-                "the default per-structure canBreak allow-lists should be empty (breaking is the escape vector)");
+        helper.assertTrue(rules.stream().anyMatch(rule ->
+                        rule.protect().isEmpty() && !rule.protectStructural()
+                                && !rule.canPlace().isEmpty() && !rule.canBreak().isEmpty()),
+                "the defaults should include a non-protecting base rule contributing canPlace/canBreak allow-lists");
+        helper.assertTrue(rules.stream().filter(StructureRule::protectStructural)
+                        .allMatch(rule -> rule.canPlace().isEmpty() && rule.canBreak().isEmpty()),
+                "the protecting rules should carry no own allow-lists (exceptions live on the shared base)");
         helper.succeed();
     }
 
@@ -58,17 +57,20 @@ public final class AdventureZonesGameTests {
             Config rule = TomlFormat.newConfig();
             rule.set("structures", "minecraft:stronghold");
             rule.set("breachable", true);
-            rule.set("canBreak", List.of("diamond_pickaxe=obsidian"));
+            rule.set("canBreak", "obsidian");
 
             ConfigTestSupport.STRUCTURE_PROTECTION.set(List.of(rule));
 
             List<StructureRule> rules = ServerConfig.INSTANCE.getStructureRules();
             helper.assertTrue(rules.size() == 1, "expected exactly one configured rule but got " + rules.size());
             StructureRule configured = rules.getFirst();
-            helper.assertTrue(configured.isProtected(), "a rule with no \"protected\" key should default to protected");
             helper.assertTrue(configured.breachable(), "configured rule should be breachable");
-            helper.assertTrue("obsidian".equals(configured.canBreak().get("diamond_pickaxe")),
-                    "per-structure canBreak should follow the configured value but was " + configured.canBreak());
+            helper.assertTrue("obsidian".equals(configured.canBreak()),
+                    "canBreak should follow the configured value but was " + configured.canBreak());
+            helper.assertFalse(configured.protectStructural(),
+                    "a rule with no protectStructural key should default to false");
+            helper.assertTrue(configured.protect().isEmpty(),
+                    "a rule with no protect key should default to protecting nothing");
         } finally {
             ConfigTestSupport.STRUCTURE_PROTECTION.set(original);
         }
@@ -76,27 +78,32 @@ public final class AdventureZonesGameTests {
     }
 
     /**
-     * The optional {@code protectsOnlyPhysical} flag round-trips through {@link ServerConfig}: present-and-true is
-     * honored, and an absent key defaults to {@code false} (full protection), matching the documented default.
+     * The optional {@code protectStructural} flag and {@code protect} regex round-trip through {@link ServerConfig}:
+     * present values are honored, and absent keys fall back to the documented defaults (false / empty).
      */
-    public static void protectsOnlyPhysicalConfigurable(GameTestHelper helper) {
+    public static void protectStructuralConfigurable(GameTestHelper helper) {
         List<? extends Config> original = ConfigTestSupport.STRUCTURE_PROTECTION.get();
         try {
-            Config physical = TomlFormat.newConfig();
-            physical.set("structures", "minecraft:ancient_city");
-            physical.set("protectsOnlyPhysical", true);
+            Config structural = TomlFormat.newConfig();
+            structural.set("structures", "minecraft:ancient_city");
+            structural.set("protectStructural", true);
 
-            Config fullByDefault = TomlFormat.newConfig();
-            fullByDefault.set("structures", "minecraft:fortress");
+            Config full = TomlFormat.newConfig();
+            full.set("structures", "minecraft:fortress");
+            full.set("protect", ".*");
 
-            ConfigTestSupport.STRUCTURE_PROTECTION.set(List.of(physical, fullByDefault));
+            ConfigTestSupport.STRUCTURE_PROTECTION.set(List.of(structural, full));
 
             List<StructureRule> rules = ServerConfig.INSTANCE.getStructureRules();
             helper.assertTrue(rules.size() == 2, "expected exactly two configured rules but got " + rules.size());
-            helper.assertTrue(rules.getFirst().protectsOnlyPhysical(),
-                    "a rule with protectsOnlyPhysical=true should report it");
-            helper.assertFalse(rules.get(1).protectsOnlyPhysical(),
-                    "a rule with no protectsOnlyPhysical key should default to false (full protection)");
+            helper.assertTrue(rules.getFirst().protectStructural(),
+                    "a rule with protectStructural=true should report it");
+            helper.assertTrue(rules.getFirst().protect().isEmpty(),
+                    "a rule with no protect key should default to empty");
+            helper.assertFalse(rules.get(1).protectStructural(),
+                    "a rule with no protectStructural key should default to false");
+            helper.assertTrue(".*".equals(rules.get(1).protect()),
+                    "the protect regex should follow the configured value but was " + rules.get(1).protect());
         } finally {
             ConfigTestSupport.STRUCTURE_PROTECTION.set(original);
         }

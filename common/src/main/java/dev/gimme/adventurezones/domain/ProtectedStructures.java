@@ -2,6 +2,7 @@ package dev.gimme.adventurezones.domain;
 
 import dev.gimme.adventurezones.domain.config.ServerConfig;
 import dev.gimme.adventurezones.domain.config.ServerConfig.StructureRule;
+import dev.gimme.adventurezones.domain.util.Identifiers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -33,10 +34,9 @@ public final class ProtectedStructures {
 
     /**
      * Returns, for each structure with a generated piece containing {@code pos}, that structure paired with the
-     * configured rules that match it. Empty if the position is not inside any matched structure piece. Whether the
-     * position is actually protected depends on at least one matching rule being {@linkplain StructureRule#isProtected()
-     * protecting}; the structure handles let callers reason about breaching relative to the specific structures the
-     * position belongs to.
+     * configured rules that match it. Empty if the position is not inside any matched structure piece. Whether a block
+     * at the position is actually protected depends on what the matching rules protect (see {@link StructureRule}); the
+     * structure handles let callers reason about breaching relative to the specific structures the position belongs to.
      */
     public static List<Match> matchesAt(ServerLevel level, BlockPos pos) {
         StructureManager structureManager = level.structureManager();
@@ -57,7 +57,7 @@ public final class ProtectedStructures {
 
             List<StructureRule> matchingRules = new ArrayList<>();
             for (StructureRule rule : rules) {
-                if (matchesRegex(structureId, rule.structures())) {
+                if (Identifiers.matches(structureId, rule.structures())) {
                     matchingRules.add(rule);
                 }
             }
@@ -74,16 +74,5 @@ public final class ProtectedStructures {
      */
     public static boolean isInsidePiece(ServerLevel level, BlockPos pos, @NotNull Structure structure) {
         return level.structureManager().getStructureWithPieceAt(pos, structure).isValid();
-    }
-
-    /**
-     * Checks if the given resource location matches the specified regex.
-     */
-    private static boolean matchesRegex(@NotNull Identifier resourceLocation, @NotNull String regex) {
-        if (regex.contains(":")) {
-            return resourceLocation.toString().matches(regex);
-        } else {
-            return resourceLocation.getPath().matches(regex);
-        }
     }
 }
