@@ -17,8 +17,6 @@ Features:
 
 Each config entry bundles a structure regex, whether it protects, its breach mode, and its own place/break exceptions, so you can define one set of rules for some structures and a different set for others. By default a set of challenging structures is protected — guarding their physical shape (`protectsOnlyPhysical`) rather than every decoration — with a shared base granting the common light-source exception; you can add or remove structures as you see fit.
 
-Also check out my other mod, [Adventure Mode Adjust](https://github.com/gimme/adventure-mode-adjust), which lets you customize which blocks can be placed and broken in vanilla Adventure mode, using regular expressions!
-
 ### Known limitations
 
 - Only block placement (via items) and block breaking are intercepted. Other world edits — buckets/fluids, item frames, dispenser auto-placement, explosions, and pistons — are not.

@@ -9,7 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Map;
 
 /**
- * Per-block place/break allow-list matching, ported from the sibling mod Adventure Mode Adjust. The allow-list is a map
+ * Per-block place/break allow-list matching. The allow-list is a map
  * of item-name regex to block-name regex; a configured exception lets a specific item still act on a specific block
  * even inside a protected structure.
  */
