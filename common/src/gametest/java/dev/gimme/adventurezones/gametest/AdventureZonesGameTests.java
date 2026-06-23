@@ -39,6 +39,8 @@ public final class AdventureZonesGameTests {
                 "the defaults should include an always-protected (breachable=false) structure");
         helper.assertTrue(rules.stream().anyMatch(StructureRule::breachable),
                 "the defaults should include a breachable structure (e.g. stronghold)");
+        helper.assertTrue(rules.stream().filter(StructureRule::isProtected).allMatch(StructureRule::protectsOnlyPhysical),
+                "the default protecting rules should guard only physical blocks (protectsOnlyPhysical=true)");
         helper.assertTrue(rules.stream().anyMatch(rule -> !rule.canPlaceOn().isEmpty()),
                 "the defaults should grant at least one canPlaceOn exception");
         helper.assertTrue(rules.stream().allMatch(rule -> rule.canBreak().isEmpty()),
@@ -67,6 +69,34 @@ public final class AdventureZonesGameTests {
             helper.assertTrue(configured.breachable(), "configured rule should be breachable");
             helper.assertTrue("obsidian".equals(configured.canBreak().get("diamond_pickaxe")),
                     "per-structure canBreak should follow the configured value but was " + configured.canBreak());
+        } finally {
+            ConfigTestSupport.STRUCTURE_PROTECTION.set(original);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The optional {@code protectsOnlyPhysical} flag round-trips through {@link ServerConfig}: present-and-true is
+     * honored, and an absent key defaults to {@code false} (full protection), matching the documented default.
+     */
+    public static void protectsOnlyPhysicalConfigurable(GameTestHelper helper) {
+        List<? extends Config> original = ConfigTestSupport.STRUCTURE_PROTECTION.get();
+        try {
+            Config physical = TomlFormat.newConfig();
+            physical.set("structures", "minecraft:ancient_city");
+            physical.set("protectsOnlyPhysical", true);
+
+            Config fullByDefault = TomlFormat.newConfig();
+            fullByDefault.set("structures", "minecraft:fortress");
+
+            ConfigTestSupport.STRUCTURE_PROTECTION.set(List.of(physical, fullByDefault));
+
+            List<StructureRule> rules = ServerConfig.INSTANCE.getStructureRules();
+            helper.assertTrue(rules.size() == 2, "expected exactly two configured rules but got " + rules.size());
+            helper.assertTrue(rules.getFirst().protectsOnlyPhysical(),
+                    "a rule with protectsOnlyPhysical=true should report it");
+            helper.assertFalse(rules.get(1).protectsOnlyPhysical(),
+                    "a rule with no protectsOnlyPhysical key should default to false (full protection)");
         } finally {
             ConfigTestSupport.STRUCTURE_PROTECTION.set(original);
         }

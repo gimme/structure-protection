@@ -35,7 +35,8 @@ public final class NeoForgeGameTests {
 
     private static final List<Test> TESTS = List.of(
             new Test("config_defaults_loaded", 20, AdventureZonesGameTests::configDefaultsLoaded),
-            new Test("protected_structures_configurable", 20, AdventureZonesGameTests::protectedStructuresConfigurable));
+            new Test("protected_structures_configurable", 20, AdventureZonesGameTests::protectedStructuresConfigurable),
+            new Test("protects_only_physical_configurable", 20, AdventureZonesGameTests::protectsOnlyPhysicalConfigurable));
 
     private NeoForgeGameTests() {
     }

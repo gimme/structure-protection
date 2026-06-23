@@ -19,4 +19,9 @@ public final class FabricGameTests {
     public void protectedStructuresConfigurable(GameTestHelper helper) {
         AdventureZonesGameTests.protectedStructuresConfigurable(helper);
     }
+
+    @GameTest
+    public void protectsOnlyPhysicalConfigurable(GameTestHelper helper) {
+        AdventureZonesGameTests.protectsOnlyPhysicalConfigurable(helper);
+    }
 }

@@ -44,6 +44,11 @@ public class FcapServerConfig extends ServerConfig {
                         structure's own pieces (you can breach a wall from outside, but cannot dig once inside; standing
                         in an unrelated protected structure does not block it). Use this for sealed structures with no
                         natural entrance, e.g. strongholds. Only meaningful on a protecting rule.
+                      "protectsOnlyPhysical": If false (default), every block in scope is protected. If true, this rule
+                        guards only blocks that block motion (walls, floors, stairs, fences, doors…) and leaves
+                        non-physical blocks such as torches, carpets, and flowers freely editable — useful when the
+                        point is to preserve the structure's shape rather than every decoration. Only meaningful on a
+                        protecting rule.
                       "canPlaceOn" (optional): Exceptions for this rule. A list of "<itemRegex>=<blockRegex>" entries;
                         each lets the matched item still be placed on the matched block inside the structure.
                         E.g. ["ladder|torch=.*"].
@@ -68,12 +73,15 @@ public class FcapServerConfig extends ServerConfig {
                         alwaysProtected.set("structures", "fortress|bastion_remnant|end_city|mansion|.*_pyramid|ancient_city|trial_chambers|pillager_outpost");
                         alwaysProtected.set("protected", true);
                         alwaysProtected.set("breachable", false);
+                        // Guard the structure's shape, not its decoration: torches, carpets, flowers, etc. stay editable.
+                        alwaysProtected.set("protectsOnlyPhysical", true);
                         alwaysProtected.set("canBreak", List.of());
 
                         Config stronghold = TomlFormat.newConfig();
                         stronghold.set("structures", "stronghold");
                         stronghold.set("protected", true);
                         stronghold.set("breachable", true);
+                        stronghold.set("protectsOnlyPhysical", true);
                         stronghold.set("canBreak", List.of());
 
                         return List.of(base, alwaysProtected, stronghold);
@@ -108,6 +116,7 @@ public class FcapServerConfig extends ServerConfig {
 
         if (cfg.contains("protected") && !(cfg.get("protected") instanceof Boolean)) return false;
         if (cfg.contains("breachable") && !(cfg.get("breachable") instanceof Boolean)) return false;
+        if (cfg.contains("protectsOnlyPhysical") && !(cfg.get("protectsOnlyPhysical") instanceof Boolean)) return false;
 
         if (cfg.contains("canPlaceOn") && !validateAllowList(cfg.get("canPlaceOn"))) return false;
         return !cfg.contains("canBreak") || validateAllowList(cfg.get("canBreak"));
@@ -150,10 +159,12 @@ public class FcapServerConfig extends ServerConfig {
                     Object protectedVal = cfg.get("protected");
                     boolean isProtected = !(protectedVal instanceof Boolean pb) || pb; // absent defaults to protected
                     boolean breachable = cfg.get("breachable") instanceof Boolean bb && bb;
+                    boolean protectsOnlyPhysical = cfg.get("protectsOnlyPhysical") instanceof Boolean pp && pp;
                     return new StructureRule(
                             cfg.get("structures"),
                             isProtected,
                             breachable,
+                            protectsOnlyPhysical,
                             parseAllowList(cfg, "canPlaceOn"),
                             parseAllowList(cfg, "canBreak"));
                 })

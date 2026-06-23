@@ -26,6 +26,12 @@ public abstract class ServerConfig {
      *                    edited only while the player stands outside this structure's own pieces (breach from outside,
      *                    locked inside) — standing inside an unrelated protected structure does not block it. Only
      *                    meaningful on a protecting rule.
+     * @param protectsOnlyPhysical if {@code false} (the default), every block in scope is protected; if {@code true},
+     *                    this rule guards only blocks that block motion (walls, floors, stairs, fences, doors…) and
+     *                    permits edits to non-physical blocks such as torches, carpets, and flowers. "Physical" means
+     *                    {@code BlockState#blocksMotion()}: a non-empty, motion-blocking collision box. Like the other
+     *                    permissions it composes by union — a rule permitting a non-physical edit allows it regardless
+     *                    of what other matching rules say. Only meaningful on a protecting rule.
      * @param canPlaceOn  exceptions for this rule: maps an item-name regex to a block-name regex of blocks the item may
      *                    still be placed on
      * @param canBreak    exceptions for this rule: maps an item-name regex to a block-name regex of blocks the item may
@@ -35,6 +41,7 @@ public abstract class ServerConfig {
             String structures,
             boolean isProtected,
             boolean breachable,
+            boolean protectsOnlyPhysical,
             Map<String, String> canPlaceOn,
             Map<String, String> canBreak
     ) {

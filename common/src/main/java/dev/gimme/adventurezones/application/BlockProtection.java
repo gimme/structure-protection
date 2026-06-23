@@ -7,6 +7,7 @@ import dev.gimme.adventurezones.domain.config.ServerConfig.StructureRule;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
@@ -29,7 +30,9 @@ public final class BlockProtection {
     public boolean preventsBreak(ServerLevel level, BlockPos targetPos, ServerPlayer player) {
         ItemStack item = player.getMainHandItem();
         BlockInWorld ruleBlock = new BlockInWorld(level, targetPos, false);
-        return prevented(level, targetPos, player, item, ruleBlock, false);
+        // When breaking, the edited block is the target itself, so its real in-world state answers "is this physical?".
+        boolean editedBlocksMotion = ruleBlock.getState().blocksMotion();
+        return prevented(level, targetPos, player, item, ruleBlock, false, editedBlocksMotion);
     }
 
     /**
@@ -42,13 +45,18 @@ public final class BlockProtection {
         BlockPos targetPos = ctx.getClickedPos();
         ItemStack item = ctx.getItemInHand();
         // The block the item is being placed on (its support), opposite the clicked face from the new block position.
+        // This drives canPlaceOn (the right-hand side of "<item>=<block>" matches the support).
         BlockPos supportPos = targetPos.relative(ctx.getClickedFace().getOpposite());
         BlockInWorld ruleBlock = new BlockInWorld(serverLevel, supportPos, false);
-        return prevented(serverLevel, targetPos, player, item, ruleBlock, true);
+        // The "physical?" question is about the block being *placed* (the item's block), not the support it rests on.
+        // The default state is a sound approximation: every motion-blocking block blocks motion in its default state.
+        boolean editedBlocksMotion = item.getItem() instanceof BlockItem blockItem
+                && blockItem.getBlock().defaultBlockState().blocksMotion();
+        return prevented(serverLevel, targetPos, player, item, ruleBlock, true, editedBlocksMotion);
     }
 
     private boolean prevented(ServerLevel level, BlockPos targetPos, @Nullable ServerPlayer player, ItemStack item,
-                              BlockInWorld ruleBlock, boolean placing) {
+                              BlockInWorld ruleBlock, boolean placing, boolean editedBlocksMotion) {
         if (player == null || player.isCreative()) return false; // Creative bypass
 
         List<Match> matches = ProtectedStructures.matchesAt(level, targetPos);
@@ -58,16 +66,22 @@ public final class BlockProtection {
         if (matches.stream().flatMap(m -> m.rules().stream()).noneMatch(StructureRule::isProtected)) return false;
 
         // Every matching rule is a whitelist: the edit is allowed the moment any rule permits it, no matter what other
-        // rules say. A rule permits it either through its allow-list, or — for a breachable rule — by the player
-        // standing outside that rule's own structure (breach from outside, locked inside).
+        // rules say. A rule permits it through its allow-list, or — on a protecting rule — by guarding only physical
+        // blocks while this edit is non-physical, or — for a breachable rule — by the player standing outside that
+        // rule's own structure (breach from outside, locked inside).
         for (Match match : matches) {
             for (StructureRule rule : match.rules()) {
                 Map<String, String> allowList = placing ? rule.canPlaceOn() : rule.canBreak();
                 if (BlockInteractionRules.isAllowed(item, ruleBlock, allowList)) return false;
 
-                if (rule.isProtected() && rule.breachable()
-                        && !ProtectedStructures.isInsidePiece(level, player.blockPosition(), match.structure())) {
-                    return false; // breachable rule and the player is outside its structure: breach permitted
+                if (rule.isProtected()) {
+                    // A "physical only" rule guards walls/floors/stairs/etc. but leaves non-physical blocks editable.
+                    if (rule.protectsOnlyPhysical() && !editedBlocksMotion) return false;
+
+                    if (rule.breachable()
+                            && !ProtectedStructures.isInsidePiece(level, player.blockPosition(), match.structure())) {
+                        return false; // breachable rule and the player is outside its structure: breach permitted
+                    }
                 }
             }
         }

@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Fabric support: the mod now runs on both NeoForge and Fabric from a shared common codebase
+- `protectsOnlyPhysical` flag on `structureProtection` rules: when `true`, a rule guards only blocks that block motion (walls, floors, stairs, fences, doors) and leaves non-physical blocks like torches, carpets, and flowers freely editable — protecting the structure's shape rather than every decoration. For placement it's judged by the block being placed, not its support. The bundled defaults enable it on the protected structures; the config key itself defaults to `false`. Existing config files are preserved on update, so add the key manually (or regenerate the file) to opt in.
 
 ### Changed
 
