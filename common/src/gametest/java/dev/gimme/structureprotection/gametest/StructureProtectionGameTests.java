@@ -39,8 +39,8 @@ public final class StructureProtectionGameTests {
                 "the defaults should include a breachable structure (e.g. stronghold)");
         helper.assertTrue(rules.stream().anyMatch(rule ->
                         rule.protect().isEmpty() && !rule.protectStructural()
-                                && !rule.canPlace().isEmpty() && !rule.canBreak().isEmpty()),
-                "the defaults should include a non-protecting base rule contributing canPlace/canBreak allow-lists");
+                                && !rule.canBreak().isEmpty()),
+                "the defaults should include a non-protecting base rule contributing a canBreak allow-list");
         helper.assertTrue(rules.stream().filter(StructureRule::protectStructural)
                         .allMatch(rule -> rule.canPlace().isEmpty() && rule.canBreak().isEmpty()),
                 "the protecting rules should carry no own allow-lists (exceptions live on the shared base)");

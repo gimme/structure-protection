@@ -7,6 +7,7 @@ import dev.gimme.structureprotection.domain.util.Constants;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -34,12 +35,14 @@ public class FcapServerConfig extends ServerConfig {
                         blocks motion (walls, floors, stairs, fences, doors…) — the structure's shape — while leaving
                         non-physical blocks such as torches, carpets, and flowers editable. For placement it is judged by
                         the block being placed, not the block it rests on.
-                      "breachable" (optional, default false): If true, a block this rule protects may still be edited
-                        while the player stands outside this structure's own pieces (breach a wall from outside, but you
-                        cannot dig once inside; standing in an unrelated protected structure does not grant it). Use this
-                        for sealed structures with no natural entrance, e.g. strongholds.
+                      "breachable" (optional, default false): If true, a block this rule protects may still be broken
+                        while the player stands outside this structure's own pieces (break a wall from outside, but you
+                        cannot dig once inside; standing in an unrelated protected structure does not grant it). It only
+                        permits breaking a way in, never placing. Use this for sealed structures with no natural
+                        entrance, e.g. strongholds.
                       "canPlace" (optional): A regex matching block names that may still be placed inside the structure,
-                        overriding protection. E.g. "ladder" so players can climb/escape.
+                        overriding protection. Only matters where the block would otherwise be protected, e.g. alongside
+                        a broad "protect" regex.
                       "canBreak" (optional): A regex matching block names that may still be broken inside the structure,
                         overriding protection. Empty by default, since breaking is the main way to escape a protected
                         structure. E.g. "decorated_pot" to let players loot pots without otherwise touching the shape.
@@ -51,21 +54,24 @@ public class FcapServerConfig extends ServerConfig {
             .defineList(
                     "structureProtection",
                     () -> {
-                        // Shared base: a few navigation/loot exceptions granted in every matched structure, so the
-                        // protecting rules below need not repeat them. It protects nothing on its own.
-                        Config base = TomlFormat.newConfig();
+                        // LinkedHashMap-backed so the keys serialize in insertion order (structures first); the default
+                        // newConfig() uses an unordered map, which writes the TOML keys in a confusing hash order.
+                        // Shared base: a few loot/navigation break exceptions granted in every matched structure, so the
+                        // protecting rules below need not repeat them. It protects nothing on its own. No canPlace: the
+                        // defaults protect only structural (motion-blocking) blocks, so ladders and other non-physical
+                        // blocks are already placeable.
+                        Config base = TomlFormat.newConfig(LinkedHashMap::new);
                         base.set("structures", ".*");
-                        base.set("canPlace", "ladder");
-                        base.set("canBreak", "decorated_pot|ladder|gilded_blackstone|gold_block|.*_ore");
+                        base.set("canBreak", "decorated_pot|gilded_blackstone|gold_block|.*_ore");
 
                         // Guard the structure's shape, not its decoration: torches, carpets, flowers, etc. stay
                         // editable because they do not block motion.
-                        Config structural = TomlFormat.newConfig();
+                        Config structural = TomlFormat.newConfig(LinkedHashMap::new);
                         structural.set("structures", "bastion_remnant|end_city|fortress|jungle_pyramid|mansion|pillager_outpost");
                         structural.set("protectStructural", true);
 
                         // Sealed structures with no natural entrance: breach a wall from outside, locked once inside.
-                        Config sealed = TomlFormat.newConfig();
+                        Config sealed = TomlFormat.newConfig(LinkedHashMap::new);
                         sealed.set("structures", "ancient_city|stronghold|trial_chambers");
                         sealed.set("protectStructural", true);
                         sealed.set("breachable", true);
@@ -73,7 +79,7 @@ public class FcapServerConfig extends ServerConfig {
                         return List.of(base, structural, sealed);
                     },
                     () -> {
-                        Config cfg = TomlFormat.newConfig();
+                        Config cfg = TomlFormat.newConfig(LinkedHashMap::new);
                         cfg.set("structures", "minecraft:fortress");
                         cfg.set("protectStructural", true);
                         return cfg;

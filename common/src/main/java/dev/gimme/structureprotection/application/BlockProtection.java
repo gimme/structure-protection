@@ -63,16 +63,17 @@ public final class BlockProtection {
         if (blockId == null) return false;
 
         // Walk every matching rule. The edit is blocked only if some rule protects this block and no rule grants an
-        // exception: an allow-list match (subtractive), or — for a breachable protecting rule — the player standing
-        // outside that rule's own structure (breach from outside, locked inside). Exceptions compose by union.
+        // exception: an allow-list match (subtractive), or — when breaking, for a breachable protecting rule — the
+        // player standing outside that rule's own structure (breach in from outside, locked inside). Breaching only
+        // ever permits breaking a way in, never placing. Exceptions compose by union.
         boolean protectedHere = false;
         for (Match match : matches) {
             for (StructureRule rule : match.rules()) {
                 if (protects(rule, blockId, editedBlocksMotion)) {
                     protectedHere = true;
-                    if (rule.breachable()
+                    if (rule.breachable() && !placing
                             && !structures.isInsidePiece(level, player.blockPosition(), match.structure())) {
-                        return false; // breachable rule and the player is outside its structure: breach permitted
+                        return false; // breachable rule, breaking from outside its structure: breach permitted
                     }
                 }
 
