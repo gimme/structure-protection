@@ -7,7 +7,7 @@ Features:
 
 - Choose *what* each rule protects, by block name and/or by shape — the two compose:
   - `protect`: a block-name regex. `.*` protects everything; you can also target specific blocks (e.g. `spawner`).
-  - `protectStructural`: protect every block that blocks motion (walls, floors, stairs, fences, doors) — the structure's shape — while leaving non-physical blocks such as torches, carpets, and flowers freely editable. For placement it's judged by the block being placed, not the block it rests on. Because the two combine, you can protect the shape *plus* a specific non-physical block (e.g. `protectStructural = true` with `protect = "sculk_sensor"`).
+  - `protectStructural`: protect every block that blocks motion (walls, floors, stairs, fences, doors) — the structure's shape — while leaving non-physical blocks such as torches, carpets, and flowers freely editable. Structural-ness is a property of the block itself (judged by its default state, so e.g. a fence gate stays protected whether open or closed), the same whether you're placing or breaking it. Because the two combine, you can protect the shape *plus* a specific non-physical block (e.g. `protectStructural = true` with `protect = "sculk_sensor"`).
 
 - Two protection modes, chosen per rule with a `breachable` flag:
   - **Always protected** (the default): the protected blocks can never be placed or broken.

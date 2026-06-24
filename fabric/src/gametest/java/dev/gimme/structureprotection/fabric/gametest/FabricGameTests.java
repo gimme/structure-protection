@@ -24,4 +24,14 @@ public final class FabricGameTests {
     public void protectStructuralConfigurable(GameTestHelper helper) {
         StructureProtectionGameTests.protectStructuralConfigurable(helper);
     }
+
+    @GameTest
+    public void rulePolicy(GameTestHelper helper) {
+        StructureProtectionGameTests.rulePolicy(helper);
+    }
+
+    @GameTest
+    public void blockEditStructural(GameTestHelper helper) {
+        StructureProtectionGameTests.blockEditStructural(helper);
+    }
 }

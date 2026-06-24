@@ -1,7 +1,7 @@
 package dev.gimme.structureprotection.client;
 
 import dev.gimme.structureprotection.domain.ProtectedPiece;
-import dev.gimme.structureprotection.domain.config.ServerConfig.StructureRule;
+import dev.gimme.structureprotection.domain.StructureRule;
 
 import java.util.List;
 

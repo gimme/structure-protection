@@ -1,7 +1,8 @@
 package dev.gimme.structureprotection.network;
 
+import dev.gimme.structureprotection.domain.IdPattern;
 import dev.gimme.structureprotection.domain.ProtectedPiece;
-import dev.gimme.structureprotection.domain.config.ServerConfig.StructureRule;
+import dev.gimme.structureprotection.domain.StructureRule;
 import dev.gimme.structureprotection.domain.util.Constants;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -34,12 +35,12 @@ public record ProtectionUpdatePayload(List<StructureRule> rules, List<ProtectedP
     private static void write(FriendlyByteBuf buf, ProtectionUpdatePayload payload) {
         buf.writeVarInt(payload.rules.size());
         for (StructureRule rule : payload.rules) {
-            buf.writeUtf(rule.structures());
-            buf.writeUtf(rule.protect());
+            buf.writeUtf(rule.structures().raw());
+            buf.writeUtf(rule.protect().raw());
             buf.writeBoolean(rule.protectStructural());
             buf.writeBoolean(rule.breachable());
-            buf.writeUtf(rule.canPlace());
-            buf.writeUtf(rule.canBreak());
+            buf.writeUtf(rule.canPlace().raw());
+            buf.writeUtf(rule.canBreak().raw());
         }
         buf.writeVarInt(payload.pieces.size());
         for (ProtectedPiece piece : payload.pieces) {
@@ -58,7 +59,9 @@ public record ProtectionUpdatePayload(List<StructureRule> rules, List<ProtectedP
         List<StructureRule> rules = new ArrayList<>(ruleCount);
         for (int i = 0; i < ruleCount; i++) {
             rules.add(new StructureRule(
-                    buf.readUtf(), buf.readUtf(), buf.readBoolean(), buf.readBoolean(), buf.readUtf(), buf.readUtf()));
+                    IdPattern.of(buf.readUtf()), IdPattern.of(buf.readUtf()),
+                    buf.readBoolean(), buf.readBoolean(),
+                    IdPattern.of(buf.readUtf()), IdPattern.of(buf.readUtf())));
         }
         int pieceCount = buf.readVarInt();
         List<ProtectedPiece> pieces = new ArrayList<>(pieceCount);

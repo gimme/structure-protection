@@ -2,6 +2,8 @@ package dev.gimme.structureprotection.infrastructure;
 
 import com.electronwill.nightconfig.core.Config;
 import com.electronwill.nightconfig.toml.TomlFormat;
+import dev.gimme.structureprotection.domain.IdPattern;
+import dev.gimme.structureprotection.domain.StructureRule;
 import dev.gimme.structureprotection.domain.config.ServerConfig;
 import dev.gimme.structureprotection.domain.util.Constants;
 import net.neoforged.neoforge.common.ModConfigSpec;
@@ -33,8 +35,8 @@ public class FcapServerConfig extends ServerConfig {
                         "protectStructural".
                       "protectStructural" (optional, default false): If true, additionally protect every block that
                         blocks motion (walls, floors, stairs, fences, doors…) — the structure's shape — while leaving
-                        non-physical blocks such as torches, carpets, and flowers editable. For placement it is judged by
-                        the block being placed, not the block it rests on.
+                        non-physical blocks such as torches, carpets, and flowers editable. Judged by the block itself
+                        (a fence gate stays protected whether open or closed), the same whether placing or breaking it.
                       "breachable" (optional, default false): If true, a block this rule protects may still be broken
                         while the player stands outside this structure's own pieces (break a wall from outside, but you
                         cannot dig once inside; standing in an unrelated protected structure does not grant it). It only
@@ -129,12 +131,12 @@ public class FcapServerConfig extends ServerConfig {
     public List<StructureRule> getStructureRules() {
         return STRUCTURE_PROTECTION.get().stream()
                 .map(cfg -> new StructureRule(
-                        cfg.get("structures"),
-                        str(cfg, "protect"),
+                        IdPattern.of(str(cfg, "structures")),
+                        IdPattern.of(str(cfg, "protect")),
                         bool(cfg, "protectStructural"),
                         bool(cfg, "breachable"),
-                        str(cfg, "canPlace"),
-                        str(cfg, "canBreak")))
+                        IdPattern.of(str(cfg, "canPlace")),
+                        IdPattern.of(str(cfg, "canBreak"))))
                 .toList();
     }
 

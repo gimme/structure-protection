@@ -1,6 +1,5 @@
 package dev.gimme.structureprotection.domain;
 
-import dev.gimme.structureprotection.domain.config.ServerConfig.StructureRule;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;

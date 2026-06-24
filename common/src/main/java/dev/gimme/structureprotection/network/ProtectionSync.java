@@ -1,9 +1,8 @@
 package dev.gimme.structureprotection.network;
 
 import dev.gimme.structureprotection.domain.ProtectedPiece;
+import dev.gimme.structureprotection.domain.StructureRule;
 import dev.gimme.structureprotection.domain.config.ServerConfig;
-import dev.gimme.structureprotection.domain.config.ServerConfig.StructureRule;
-import dev.gimme.structureprotection.domain.util.Identifiers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -93,7 +92,7 @@ public final class ProtectionSync {
             Identifier id = registry.getKey(structure);
             if (id == null) return false;
             for (StructureRule rule : rules) {
-                if (Identifiers.matches(id, rule.structures())) return true;
+                if (rule.appliesTo(id)) return true;
             }
             return false;
         };

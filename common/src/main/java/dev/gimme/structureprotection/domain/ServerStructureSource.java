@@ -1,8 +1,6 @@
 package dev.gimme.structureprotection.domain;
 
 import dev.gimme.structureprotection.domain.config.ServerConfig;
-import dev.gimme.structureprotection.domain.config.ServerConfig.StructureRule;
-import dev.gimme.structureprotection.domain.util.Identifiers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -44,7 +42,7 @@ public final class ServerStructureSource implements StructureSource {
 
             List<StructureRule> matchingRules = new ArrayList<>();
             for (StructureRule rule : rules) {
-                if (Identifiers.matches(structureId, rule.structures())) {
+                if (rule.appliesTo(structureId)) {
                     matchingRules.add(rule);
                 }
             }

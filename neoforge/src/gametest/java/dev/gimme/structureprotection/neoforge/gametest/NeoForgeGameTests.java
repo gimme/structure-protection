@@ -36,7 +36,9 @@ public final class NeoForgeGameTests {
     private static final List<Test> TESTS = List.of(
             new Test("config_defaults_loaded", 20, StructureProtectionGameTests::configDefaultsLoaded),
             new Test("protected_structures_configurable", 20, StructureProtectionGameTests::protectedStructuresConfigurable),
-            new Test("protect_structural_configurable", 20, StructureProtectionGameTests::protectStructuralConfigurable));
+            new Test("protect_structural_configurable", 20, StructureProtectionGameTests::protectStructuralConfigurable),
+            new Test("rule_policy", 20, StructureProtectionGameTests::rulePolicy),
+            new Test("block_edit_structural", 20, StructureProtectionGameTests::blockEditStructural));
 
     private NeoForgeGameTests() {
     }

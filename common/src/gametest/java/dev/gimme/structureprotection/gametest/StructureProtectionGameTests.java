@@ -2,10 +2,14 @@ package dev.gimme.structureprotection.gametest;
 
 import com.electronwill.nightconfig.core.Config;
 import com.electronwill.nightconfig.toml.TomlFormat;
+import dev.gimme.structureprotection.domain.BlockEdit;
+import dev.gimme.structureprotection.domain.IdPattern;
+import dev.gimme.structureprotection.domain.StructureRule;
 import dev.gimme.structureprotection.domain.config.ServerConfig;
-import dev.gimme.structureprotection.domain.config.ServerConfig.StructureRule;
 import dev.gimme.structureprotection.infrastructure.ConfigTestSupport;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.block.Blocks;
 
 import java.util.List;
 
@@ -65,8 +69,8 @@ public final class StructureProtectionGameTests {
             helper.assertTrue(rules.size() == 1, "expected exactly one configured rule but got " + rules.size());
             StructureRule configured = rules.getFirst();
             helper.assertTrue(configured.breachable(), "configured rule should be breachable");
-            helper.assertTrue("obsidian".equals(configured.canBreak()),
-                    "canBreak should follow the configured value but was " + configured.canBreak());
+            helper.assertTrue("obsidian".equals(configured.canBreak().raw()),
+                    "canBreak should follow the configured value but was " + configured.canBreak().raw());
             helper.assertFalse(configured.protectStructural(),
                     "a rule with no protectStructural key should default to false");
             helper.assertTrue(configured.protect().isEmpty(),
@@ -102,11 +106,78 @@ public final class StructureProtectionGameTests {
                     "a rule with no protect key should default to empty");
             helper.assertFalse(rules.get(1).protectStructural(),
                     "a rule with no protectStructural key should default to false");
-            helper.assertTrue(".*".equals(rules.get(1).protect()),
-                    "the protect regex should follow the configured value but was " + rules.get(1).protect());
+            helper.assertTrue(".*".equals(rules.get(1).protect().raw()),
+                    "the protect regex should follow the configured value but was " + rules.get(1).protect().raw());
         } finally {
             ConfigTestSupport.STRUCTURE_PROTECTION.set(original);
         }
+        helper.succeed();
+    }
+
+    /**
+     * The policy logic on {@link StructureRule} and {@link IdPattern} reads the way the docs describe, exercised directly
+     * (no world needed): {@code appliesTo} honors colon-vs-path matching, {@code protects} combines the block pattern
+     * with {@code protectStructural} + structural-ness, and the allow-lists override per edit kind.
+     */
+    public static void rulePolicy(GameTestHelper helper) {
+        Identifier fortress = Identifier.fromNamespaceAndPath("minecraft", "fortress");
+        Identifier endCity = Identifier.fromNamespaceAndPath("minecraft", "end_city");
+        Identifier spawner = Identifier.fromNamespaceAndPath("minecraft", "spawner");
+        Identifier stone = Identifier.fromNamespaceAndPath("minecraft", "stone");
+        Identifier pot = Identifier.fromNamespaceAndPath("minecraft", "decorated_pot");
+
+        // A shape rule (path regex) that still lets players break decorated pots to loot them.
+        StructureRule shape = new StructureRule(
+                IdPattern.of("fortress"), IdPattern.NONE, true, false,
+                IdPattern.NONE, IdPattern.of("decorated_pot"));
+
+        helper.assertTrue(shape.appliesTo(fortress), "a path regex should match the fortress id");
+        helper.assertFalse(shape.appliesTo(endCity), "a fortress rule should not apply to end_city");
+        helper.assertTrue(shape.protects(stone, true), "protectStructural should protect a structural block");
+        helper.assertFalse(shape.protects(spawner, false),
+                "protectStructural should leave a non-structural block editable");
+        helper.assertTrue(shape.allowsBreaking(pot), "canBreak should allow breaking the decorated pot");
+        helper.assertFalse(shape.allowsPlacing(pot), "an empty canPlace should allow nothing");
+
+        // A targeted rule that protects one named block, matched against the full namespaced id.
+        StructureRule named = new StructureRule(
+                IdPattern.of("minecraft:fortress"), IdPattern.of("spawner"), false, false,
+                IdPattern.NONE, IdPattern.NONE);
+
+        helper.assertTrue(named.appliesTo(fortress), "a namespaced regex should match the full id");
+        helper.assertTrue(named.protects(spawner, false), "the protect regex should protect the named block");
+        helper.assertFalse(named.protects(stone, true), "the protect regex should not protect an unlisted block");
+
+        // The empty pattern matches nothing.
+        helper.assertFalse(IdPattern.NONE.matches(stone), "the empty pattern should match nothing");
+        helper.assertTrue(IdPattern.NONE.isEmpty(), "the empty pattern should report empty");
+
+        helper.succeed();
+    }
+
+    /**
+     * A block's structural-ness is a property of its type, judged by its default state, identically for placing and
+     * breaking. Solid blocks are structural; non-physical decoration is not; and a fence gate is structural by its
+     * default (closed) state, even though an open gate blocks no motion — so it cannot be opened to dodge shape
+     * protection. {@code BlockEdit} enforces this by construction: it holds a block, never a particular block state.
+     */
+    public static void blockEditStructural(GameTestHelper helper) {
+        helper.assertTrue(BlockEdit.breaking(Blocks.STONE).isStructural(),
+                "a solid block should be structural");
+        helper.assertFalse(BlockEdit.breaking(Blocks.TORCH).isStructural(),
+                "a non-physical decoration block should not be structural");
+        helper.assertTrue(BlockEdit.breaking(Blocks.OAK_FENCE_GATE).isStructural(),
+                "a fence gate should be structural by its default (closed) state, so it can't be opened to dodge it");
+
+        // Placing and breaking agree: structural-ness is a property of the block, not the edit kind.
+        helper.assertTrue(BlockEdit.placing(Blocks.STONE).isStructural() == BlockEdit.breaking(Blocks.STONE).isStructural(),
+                "placing and breaking should judge structural-ness identically");
+
+        BlockEdit place = BlockEdit.placing(Blocks.STONE);
+        helper.assertTrue(place.isPlacing() && !place.isBreaking(), "a placing edit should report placing");
+        BlockEdit breakEdit = BlockEdit.breaking(Blocks.STONE);
+        helper.assertTrue(breakEdit.isBreaking() && !breakEdit.isPlacing(), "a breaking edit should report breaking");
+
         helper.succeed();
     }
 }

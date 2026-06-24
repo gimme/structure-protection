@@ -1,9 +1,8 @@
 package dev.gimme.structureprotection.client;
 
 import dev.gimme.structureprotection.domain.ProtectedPiece;
+import dev.gimme.structureprotection.domain.StructureRule;
 import dev.gimme.structureprotection.domain.StructureSource;
-import dev.gimme.structureprotection.domain.config.ServerConfig.StructureRule;
-import dev.gimme.structureprotection.domain.util.Identifiers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
@@ -42,7 +41,7 @@ public final class ClientStructureSource implements StructureSource {
         for (Identifier structureId : here) {
             List<StructureRule> matchingRules = new ArrayList<>();
             for (StructureRule rule : rules) {
-                if (Identifiers.matches(structureId, rule.structures())) {
+                if (rule.appliesTo(structureId)) {
                     matchingRules.add(rule);
                 }
             }
